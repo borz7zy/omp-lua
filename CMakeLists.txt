@@ -64,3 +64,4 @@ add_library(lua::header ALIAS lua-header)
 
 add_library(${PROJECT_NAME} SHARED main.cpp)
 target_link_libraries(${PROJECT_NAME} PUBLIC OMP-SDK lua::lib lua::header)
+set_property(TARGET ${PROJECT_NAME} PROPERTY PREFIX "")
