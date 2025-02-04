@@ -1,3 +1,8 @@
+#include <vector>
+#include <filesystem>
+#include <string>
+#include <optional>
+
 extern "C"
 {
 #include "lauxlib.h"
@@ -11,6 +16,12 @@ extern "C"
 
 // Include the vehicle component information.
 #include <Server/Components/Vehicles/vehicles.hpp>
+
+struct LuaStateInfo
+{
+    lua_State *L;
+    const char *script;
+};
 
 // This should use an abstract interface if it is to be passed to other components.  Like the files
 // in `<Server/Components/>` you would share only this base class and keep the implementation
@@ -28,8 +39,45 @@ class OmpLua final : public IComponent,
                      public PlayerUpdateEventHandler
 {
 private:
+    std::vector<std::string> sideFiles_;
+    std::optional<std::string> mainscriptFile_;
+
+    void scanSidescripts(const std::filesystem::path &directory)
+    {
+        if (!std::filesystem::exists(directory) || !std::filesystem::is_directory(directory))
+        {
+            return;
+        }
+        for (const auto &entry : std::filesystem::directory_iterator(directory))
+        {
+            if (std::filesystem::is_regular_file(entry.path()))
+            {
+                sideFiles_.push_back(entry.path().string());
+            }
+        }
+    }
+
+    std::optional<std::string> scanMainscripts(const std::filesystem::path &directory)
+    {
+        if (!std::filesystem::exists(directory) || !std::filesystem::is_directory(directory))
+        {
+            return std::nullopt;
+        }
+        for (const auto &entry : std::filesystem::directory_iterator(directory))
+        {
+            if (std::filesystem::is_regular_file(entry.path()))
+            {
+                return entry.path().string();
+            }
+        }
+        return std::nullopt;
+    }
+
     // Hold a reference to the main server core.
     ICore *core_ = nullptr;
+
+    std::vector<LuaStateInfo> sideScripts_;
+    lua_State *L_ = nullptr;
 
 public:
     // Visit https://open.mp/uid to generate a new unique ID.
@@ -38,6 +86,11 @@ public:
     // When this component is destroyed we need to tell any linked components this it is gone.
     ~OmpLua()
     {
+        if (L_ != nullptr)
+        {
+            lua_close(L_);
+            L_ = nullptr;
+        }
     }
 
     void onIncomingConnection(IPlayer &player, StringView ipAddress, unsigned short port) override {}
@@ -83,6 +136,35 @@ public:
     {
         // Cache core, player pool here
         core_ = c;
+
+        L_ = (L_ == nullptr) ? luaL_newstate() : L_;
+        if (L_ == nullptr)
+        {
+            core_->printLn("Lua state for main script load error!");
+        }
+        luaL_openlibs(L_);
+
+        scanSidescripts("./sidescripts");
+        mainscriptFile_ = scanMainscripts("./mainscripts");
+
+        for (const auto &file : sideFiles_)
+        {
+            lua_State *SC = luaL_newstate();
+            if (SC == nullptr)
+            {
+                core_->printLn("Lua state for side script load error!");
+            }
+            luaL_openlibs(SC);
+
+            if (luaL_dofile(SC, file.c_str()) != LUA_OK)
+            {
+                const char *errorMsg = lua_tostring(SC, -1);
+                core_->printLn("%s", errorMsg ? errorMsg : "Unknown Lua error");
+                lua_pop(SC, 1);
+            }
+            // sideScripts_.push_back(SC);
+        }
+
         core_->printLn("OMP LUA loaded.");
     }
 
