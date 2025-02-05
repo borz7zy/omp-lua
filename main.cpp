@@ -148,6 +148,49 @@ private:
         callLuaFunction(L_, funcName, arguments);
     }
 
+    int native_printOMP(lua_State *L)
+    {
+        if (!L)
+            return 0;
+
+        int nargs = lua_gettop(L);
+        std::string output;
+
+        for (int i = 1; i <= nargs; ++i)
+        {
+            if (lua_isstring(L, i))
+            {
+                output += lua_tostring(L, i);
+            }
+            else if (lua_isnumber(L, i))
+            {
+                output += std::to_string(lua_tonumber(L, i));
+            }
+            else if (lua_isboolean(L, i))
+            {
+                output += lua_toboolean(L, i) ? "true" : "false";
+            }
+            else if (lua_isnil(L, i))
+            {
+                output += "nil";
+            }
+            else
+            {
+                output += "[unknown]";
+            }
+
+            if (i < nargs)
+                output += " ";
+        }
+
+        if (core_ != nullptr)
+        {
+            core_->printLn("OMP LUA: %s", output.c_str());
+        }
+
+        return 1;
+    }
+
 public:
     // Visit https://open.mp/uid to generate a new unique ID.
     PROVIDE_UID(0x46EEFEA7E0B81CAE);
@@ -239,6 +282,14 @@ public:
                 core_->printLn("%s", errorMsg ? errorMsg : "OMP LUA: Unknown Lua error");
                 lua_pop(SC, 1);
             }
+
+            lua_pushlightuserdata(SC, this);
+            lua_pushcclosure(SC, [](lua_State *L) -> int
+                             {
+            OmpLua *self = static_cast<OmpLua*>(lua_touserdata(L, lua_upvalueindex(1)));
+            return self->native_printOMP(L); }, 1);
+            lua_setglobal(SC, "printOMP");
+
             LuaStateInfo sclsi;
             sclsi.L = SC;
             sclsi.script = file.c_str();
@@ -252,6 +303,12 @@ public:
                 core_->printLn("%s", errorMsg ? errorMsg : "OMP LUA: Unknown Lua error");
                 lua_pop(L_, 1);
             }
+            lua_pushlightuserdata(L_, this);
+            lua_pushcclosure(L_, [](lua_State *L) -> int
+                             {
+            OmpLua *self = static_cast<OmpLua*>(lua_touserdata(L, lua_upvalueindex(1)));
+            return self->native_printOMP(L); }, 1);
+            lua_setglobal(L_, "printOMP");
         }
         else
         {
