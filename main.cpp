@@ -64,7 +64,7 @@ private:
 
     lua_State *L_ = nullptr;
 
-    std::map<int, IPlayer> playerMap_;
+    std::map<int, IPlayer *> playerMap_;
 
     using LuaValue = std::variant<int, double, std::string, bool>;
 
@@ -218,7 +218,7 @@ public:
 
     void onIncomingConnection(IPlayer &player, StringView ipAddress, unsigned short port) override
     {
-        playerMap_[player.getID()] = player;
+        playerMap_[player.getID()] = &player;
         // public OnIncomingConnection(playerid, ip_address[], port)
         callLua("OnIncomingConnection", player.getID(), ipAddress.data(), port);
     }
