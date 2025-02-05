@@ -299,11 +299,13 @@ public:
             const auto &value = result[0];
             if (std::holds_alternative<bool>(value))
             {
+                core_->printLn("return value: %d", std::get<bool>(value));
                 return std::get<bool>(value);
             }
             else if (std::holds_alternative<int>(value))
             {
                 int intResult = std::get<int>(value);
+                core_->printLn("return value: %d", intResult);
                 return static_cast<bool>(intResult);
             }
         }
