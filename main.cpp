@@ -257,6 +257,17 @@ public:
         // Cache core, player pool here
         core_ = c;
 
+        core_->getPlayers().getPlayerConnectDispatcher().addEventHandler(this);
+        core_->getPlayers().getPlayerSpawnDispatcher().addEventHandler(this);
+        core_->getPlayers().getPlayerChangeDispatcher().addEventHandler(this);
+        core_->getPlayers().getPlayerDamageDispatcher().addEventHandler(this);
+        core_->getPlayers().getPlayerUpdateDispatcher().addEventHandler(this);
+        core_->getPlayers().getPlayerStreamDispatcher().addEventHandler(this);
+        core_->getPlayers().getPlayerTextDispatcher().addEventHandler(this);
+        core_->getPlayers().getPlayerShotDispatcher().addEventHandler(this);
+        core_->getPlayers().getPlayerClickDispatcher().addEventHandler(this);
+        core_->getPlayers().getPlayerCheckDispatcher().addEventHandler(this);
+
         L_ = (L_ == nullptr) ? luaL_newstate() : L_;
         if (L_ == nullptr)
         {
