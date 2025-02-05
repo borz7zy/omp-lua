@@ -122,33 +122,40 @@ private:
             return false;
 
         lua_getglobal(L, funcName.c_str());
-        if (lua_isfunction(L, -1))
+        if (!lua_isfunction(L, -1))
         {
-            for (const auto &arg : args)
-            {
-                pushLuaValue(L, arg);
-            }
-
-            if (lua_pcall(L, args.size(), LUA_MULTRET, 0) != LUA_OK)
-            {
-                const char *errorMsg = lua_tostring(L, -1);
-                if (core_ != nullptr)
-                {
-                    core_->printLn("OMP LUA ERROR: %s", (errorMsg ? errorMsg : "Unknown error"));
-                }
-                lua_pop(L, 1);
-                return false;
-            }
-
-            int numResults = lua_gettop(L); // Get the number of results from Lua
-            for (int i = 1; i <= numResults; ++i)
-            {
-                outResults.push_back(popLuaValue(L, i));
-            }
+            lua_pop(L, 1);
+            return false;
         }
+
+        for (const auto &arg : args)
+        {
+            pushLuaValue(L, arg);
+        }
+
+        if (lua_pcall(L, args.size(), LUA_MULTRET, 0) != LUA_OK)
+        {
+            const char *errorMsg = lua_tostring(L, -1);
+            if (core_ != nullptr)
+            {
+                core_->printLn("OMP LUA ERROR: %s", (errorMsg ? errorMsg : "Unknown error"));
+            }
+            lua_pop(L, 1);
+            return false;
+        }
+
+        int numResults = lua_gettop(L);
+
+        for (int i = numResults; i > 0; --i)
+        {
+            outResults.push_back(popLuaValue(L, -i));
+        }
+
+        lua_settop(L, 0);
 
         return true;
     }
+
 
     template <typename... Args>
     std::vector<LuaValue> callLua(const std::string &funcName, Args &&...args)
