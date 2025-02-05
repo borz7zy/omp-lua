@@ -294,18 +294,28 @@ public:
     {
         // public OnPlayerCommandText(playerid, cmdtext[])
         auto result = callLua("OnPlayerCommandText", player.getID(), message.data());
+        for (const auto& val : result)
+        {
+            if (std::holds_alternative<bool>(val))
+                core_->printLn("bool: %d", std::get<bool>(val));
+            else if (std::holds_alternative<int>(val))
+                core_->printLn("int: %d", std::get<int>(val));
+            else if (std::holds_alternative<std::string>(val))
+                core_->printLn("string: %s", std::get<std::string>(val));
+        }
+
         if (!result.empty())
         {
             const auto &value = result[0];
             if (std::holds_alternative<bool>(value))
             {
-                core_->printLn("return value: %d", std::get<bool>(value));
+                core_->printLn("return value1: %d", std::get<bool>(value));
                 return std::get<bool>(value);
             }
             else if (std::holds_alternative<int>(value))
             {
                 int intResult = std::get<int>(value);
-                core_->printLn("return value: %d", intResult);
+                core_->printLn("return value2: %d", intResult);
                 return static_cast<bool>(intResult);
             }
         }
