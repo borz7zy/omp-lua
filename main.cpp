@@ -3,6 +3,7 @@
 #include <string>
 #include <optional>
 #include <variant>
+#include <map>
 
 extern "C"
 {
@@ -63,6 +64,8 @@ private:
 
     lua_State *L_ = nullptr;
 
+    std::map<int, IPlayer> playerMap_;
+
     using LuaValue = std::variant<int, double, std::string, bool>;
 
     void pushLuaValue(lua_State *L, const LuaValue &value)
@@ -88,7 +91,32 @@ private:
                    } },
                    value);
     }
-    bool callLuaFunction(lua_State *L, const std::string &funcName, const std::vector<LuaValue> &args)
+
+    LuaValue popLuaValue(lua_State *L, int index)
+    {
+        if (lua_isinteger(L, index))
+        {
+            return static_cast<int>(lua_tointeger(L, index));
+        }
+        else if (lua_isnumber(L, index))
+        {
+            return lua_tonumber(L, index);
+        }
+        else if (lua_isstring(L, index))
+        {
+            return lua_tostring(L, index);
+        }
+        else if (lua_isboolean(L, index))
+        {
+            return lua_toboolean(L, index);
+        }
+        else
+        {
+            return nullptr; // Or handle error appropriately
+        }
+    }
+
+    bool callLuaFunction(lua_State *L, const std::string &funcName, const std::vector<LuaValue> &args, std::vector<LuaValue> &outResults)
     {
         if (!L)
             return false;
@@ -101,7 +129,7 @@ private:
                 pushLuaValue(L, arg);
             }
 
-            if (lua_pcall(L, args.size(), 0, 0) != LUA_OK)
+            if (lua_pcall(L, args.size(), LUA_MULTRET, 0) != LUA_OK)
             {
                 const char *errorMsg = lua_tostring(L, -1);
                 if (core_ != nullptr)
@@ -111,17 +139,24 @@ private:
                 lua_pop(L, 1);
                 return false;
             }
+
+            int numResults = lua_gettop(L); // Get the number of results from Lua
+            for (int i = 1; i <= numResults; ++i)
+            {
+                outResults.push_back(popLuaValue(L, i));
+            }
         }
 
-        return false;
+        return true;
     }
 
     template <typename... Args>
-    int callLua(const std::string &funcName, Args &&...args)
+    std::vector<LuaValue> callLua(const std::string &funcName, Args &&...args)
     {
         std::vector<LuaValue> arguments = {std::forward<Args>(args)...};
-
-        return callLuaFunction(L_, funcName, arguments);
+        std::vector<LuaValue> results;
+        callLuaFunction(L_, funcName, arguments, results);
+        return results;
     }
 
     int native_printOMP(lua_State *L)
@@ -183,6 +218,7 @@ public:
 
     void onIncomingConnection(IPlayer &player, StringView ipAddress, unsigned short port) override
     {
+        playerMap_[player.getID()] = player;
         // public OnIncomingConnection(playerid, ip_address[], port)
         callLua("OnIncomingConnection", player.getID(), ipAddress.data(), port);
     }
@@ -195,6 +231,7 @@ public:
     {
         // public OnPlayerDisconnect(playerid, reason)
         callLua("OnPlayerDisconnect", player.getID(), reason);
+        playerMap_.erase(player.getID());
     }
     void onPlayerClientInit(IPlayer &player) override
     {
@@ -202,14 +239,75 @@ public:
     }
     bool onPlayerRequestSpawn(IPlayer &player) override
     {
-
+        // public OnPlayerRequestSpawn(playerid)
+        auto result = callLua("OnPlayerRequestSpawn", player.getID());
+        if (!result.empty())
+        {
+            const auto &value = result[0];
+            if (std::holds_alternative<bool>(value))
+            {
+                return std::get<bool>(value);
+            }
+            else if (std::holds_alternative<int>(value))
+            {
+                int intResult = std::get<int>(value);
+                return static_cast<bool>(intResult);
+            }
+        }
         return true;
     }
-    void onPlayerSpawn(IPlayer &player) override {}
-    void onPlayerStreamIn(IPlayer &player, IPlayer &forPlayer) override {}
-    void onPlayerStreamOut(IPlayer &player, IPlayer &forPlayer) override {}
-    bool onPlayerText(IPlayer &player, StringView message) override { return true; }
-    bool onPlayerCommandText(IPlayer &player, StringView message) override { return false; }
+    void onPlayerSpawn(IPlayer &player) override
+    {
+        // public OnPlayerSpawn(playerid)
+        callLua("OnPlayerSpawn", player.getID());
+    }
+    void onPlayerStreamIn(IPlayer &player, IPlayer &forPlayer) override
+    {
+        // public OnPlayerStreamIn(playerid, forplayerid)
+        callLua("OnPlayerStreamIn", player.getID());
+    }
+    void onPlayerStreamOut(IPlayer &player, IPlayer &forPlayer) override
+    {
+        // public OnPlayerStreamOut(playerid, forplayerid)
+        callLua("OnPlayerStreamOut", player.getID());
+    }
+    bool onPlayerText(IPlayer &player, StringView message) override
+    {
+        // public OnPlayerText(playerid, text[])
+        auto result = callLua("OnPlayerText", player.getID(), message.data());
+        if (!result.empty())
+        {
+            const auto &value = result[0];
+            if (std::holds_alternative<bool>(value))
+            {
+                return std::get<bool>(value);
+            }
+            else if (std::holds_alternative<int>(value))
+            {
+                int intResult = std::get<int>(value);
+                return static_cast<bool>(intResult);
+            }
+        }
+        return true;
+    }
+    bool onPlayerCommandText(IPlayer &player, StringView message) override
+    {
+        // public OnPlayerCommandText(playerid, cmdtext[])
+        auto result = callLua("OnPlayerCommandText", player.getID(), message.data());
+        if (!result.empty())
+        {
+            const auto &value = result[0];
+            if (std::holds_alternative<bool>(value))
+            {
+                return std::get<bool>(value);
+            }
+            else if (std::holds_alternative<int>(value))
+            {
+                int intResult = std::get<int>(value);
+                return static_cast<bool>(intResult);
+            }
+        }
+    }
     bool onPlayerShotMissed(IPlayer &player, const PlayerBulletData &bulletData) override { return true; }
     bool onPlayerShotPlayer(IPlayer &player, IPlayer &target, const PlayerBulletData &bulletData) override { return true; }
     bool onPlayerShotVehicle(IPlayer &player, IVehicle &target, const PlayerBulletData &bulletData) override { return true; }

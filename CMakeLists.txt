@@ -51,7 +51,7 @@ set(LUA_HEADERS
 
 add_library(lua STATIC ${LUA_BUILD})
 if (WIN32)
-    target_compile_options(lua PRIVATE /std:c99 /O2)
+    target_compile_options(lua PRIVATE /std:c99)
 else()
     target_compile_options(lua PRIVATE -O2 -std=c99)
 endif()
