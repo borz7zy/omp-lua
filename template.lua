@@ -5,3 +5,7 @@ end
 function OnPlayerConnect(playerid)
     printOMP("player connected:", playerid)
 end
+
+function OnPlayerDisconnect(playerid, reason)
+    printOMP("player disconnected: ", playerid, reason)
+end

@@ -40,23 +40,7 @@ class OmpLua final : public IComponent,
                      public PlayerUpdateEventHandler
 {
 private:
-    std::vector<std::string> sideFiles_;
     std::optional<std::string> mainscriptFile_;
-
-    void scanSidescripts(const std::filesystem::path &directory)
-    {
-        if (!std::filesystem::exists(directory) || !std::filesystem::is_directory(directory))
-        {
-            return;
-        }
-        for (const auto &entry : std::filesystem::directory_iterator(directory))
-        {
-            if (std::filesystem::is_regular_file(entry.path()))
-            {
-                sideFiles_.emplace_back(entry.path().string());
-            }
-        }
-    }
 
     std::optional<std::string> scanMainscripts(const std::filesystem::path &directory)
     {
@@ -77,7 +61,6 @@ private:
     // Hold a reference to the main server core.
     ICore *core_ = nullptr;
 
-    std::vector<LuaStateInfo> sideScripts_;
     lua_State *L_ = nullptr;
 
     using LuaValue = std::variant<int, double, std::string, bool>;
@@ -134,18 +117,11 @@ private:
     }
 
     template <typename... Args>
-    void callLua(const std::string &funcName, Args &&...args)
+    int callLua(const std::string &funcName, Args &&...args)
     {
         std::vector<LuaValue> arguments = {std::forward<Args>(args)...};
 
-        for (const auto &script : sideScripts_)
-        {
-            if (!script.L)
-                continue;
-
-            callLuaFunction(script.L, funcName, arguments);
-        }
-        callLuaFunction(L_, funcName, arguments);
+        return callLuaFunction(L_, funcName, arguments);
     }
 
     int native_printOMP(lua_State *L)
@@ -215,9 +191,20 @@ public:
         // public OnPlayerConnect(playerid)
         callLua("OnPlayerConnect", player.getID());
     }
-    void onPlayerDisconnect(IPlayer &player, PeerDisconnectReason reason) override {}
-    void onPlayerClientInit(IPlayer &player) override {}
-    bool onPlayerRequestSpawn(IPlayer &player) override { return true; }
+    void onPlayerDisconnect(IPlayer &player, PeerDisconnectReason reason) override
+    {
+        // public OnPlayerDisconnect(playerid, reason)
+        callLua("OnPlayerDisconnect", player.getID(), reason);
+    }
+    void onPlayerClientInit(IPlayer &player) override
+    {
+        // TODO
+    }
+    bool onPlayerRequestSpawn(IPlayer &player) override
+    {
+
+        return true;
+    }
     void onPlayerSpawn(IPlayer &player) override {}
     void onPlayerStreamIn(IPlayer &player, IPlayer &forPlayer) override {}
     void onPlayerStreamOut(IPlayer &player, IPlayer &forPlayer) override {}
@@ -275,37 +262,8 @@ public:
         }
         luaL_openlibs(L_);
 
-        scanSidescripts("./sidescripts");
         mainscriptFile_ = scanMainscripts("./mainscripts");
 
-        for (const auto &file : sideFiles_)
-        {
-            lua_State *SC = luaL_newstate();
-            if (SC == nullptr)
-            {
-                core_->printLn("OMP LUA: Lua state for side script load error!");
-            }
-            luaL_openlibs(SC);
-
-            if (luaL_dofile(SC, file.c_str()) != LUA_OK)
-            {
-                const char *errorMsg = lua_tostring(SC, -1);
-                core_->printLn("%s", errorMsg ? errorMsg : "OMP LUA: Unknown Lua error");
-                lua_pop(SC, 1);
-            }
-
-            lua_pushlightuserdata(SC, this);
-            lua_pushcclosure(SC, [](lua_State *L) -> int
-                             {
-            OmpLua *self = static_cast<OmpLua*>(lua_touserdata(L, lua_upvalueindex(1)));
-            return self->native_printOMP(L); }, 1);
-            lua_setglobal(SC, "printOMP");
-
-            LuaStateInfo sclsi;
-            sclsi.L = SC;
-            sclsi.script = file.c_str();
-            sideScripts_.push_back(sclsi);
-        }
         if (mainscriptFile_.has_value())
         {
             if (luaL_dofile(L_, mainscriptFile_->c_str()) != LUA_OK)
