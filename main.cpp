@@ -2,6 +2,7 @@
 #include <filesystem>
 #include <string>
 #include <optional>
+#include <variant>
 
 extern "C"
 {
@@ -52,7 +53,7 @@ private:
         {
             if (std::filesystem::is_regular_file(entry.path()))
             {
-                sideFiles_.push_back(entry.path().string());
+                sideFiles_.emplace_back(entry.path().string());
             }
         }
     }
@@ -79,6 +80,74 @@ private:
     std::vector<LuaStateInfo> sideScripts_;
     lua_State *L_ = nullptr;
 
+    using LuaValue = std::variant<int, double, std::string, bool>;
+
+    void pushLuaValue(lua_State *L, const LuaValue &value)
+    {
+        std::visit([L](auto &&arg)
+                   {
+                   using T = std::decay_t<decltype(arg)>;
+                   if constexpr (std::is_same_v<T, int>)
+                   {
+                       lua_pushinteger(L, arg);
+                   }
+                   else if constexpr (std::is_same_v<T, double>)
+                   {
+                       lua_pushnumber(L, arg);
+                   }
+                   else if constexpr (std::is_same_v<T, std::string>)
+                   {
+                       lua_pushstring(L, arg.c_str());
+                   }
+                   else if constexpr (std::is_same_v<T, bool>)
+                   {
+                       lua_pushboolean(L, arg);
+                   } },
+                   value);
+    }
+    bool callLuaFunction(lua_State *L, const std::string &funcName, const std::vector<LuaValue> &args)
+    {
+        if (!L)
+            return false;
+
+        lua_getglobal(L, funcName.c_str());
+        if (lua_isfunction(L, -1))
+        {
+            for (const auto &arg : args)
+            {
+                pushLuaValue(L, arg);
+            }
+
+            if (lua_pcall(L, args.size(), 0, 0) != LUA_OK)
+            {
+                const char *errorMsg = lua_tostring(L, -1);
+                if (core_ != nullptr)
+                {
+                    core_->printLn("OMP LUA ERROR: %s", (errorMsg ? errorMsg : "Unknown error"));
+                }
+                lua_pop(L, 1);
+                return false;
+            }
+        }
+
+        return false;
+    }
+
+    template <typename... Args>
+    void callLua(const std::string &funcName, Args &&...args)
+    {
+        std::vector<LuaValue> arguments = {std::forward<Args>(args)...};
+
+        for (const auto &script : sideScripts_)
+        {
+            if (!script.L)
+                continue;
+
+            callLuaFunction(script.L, funcName, arguments);
+        }
+        callLuaFunction(L_, funcName, arguments);
+    }
+
 public:
     // Visit https://open.mp/uid to generate a new unique ID.
     PROVIDE_UID(0x46EEFEA7E0B81CAE);
@@ -93,8 +162,16 @@ public:
         }
     }
 
-    void onIncomingConnection(IPlayer &player, StringView ipAddress, unsigned short port) override {}
-    void onPlayerConnect(IPlayer &player) override {}
+    void onIncomingConnection(IPlayer &player, StringView ipAddress, unsigned short port) override
+    {
+        // public OnIncomingConnection(playerid, ip_address[], port)
+        callLua("OnIncomingConnection", player.getID(), ipAddress.data(), port);
+    }
+    void onPlayerConnect(IPlayer &player) override
+    {
+        // public OnPlayerConnect(playerid)
+        callLua("OnPlayerConnect", player.getID());
+    }
     void onPlayerDisconnect(IPlayer &player, PeerDisconnectReason reason) override {}
     void onPlayerClientInit(IPlayer &player) override {}
     bool onPlayerRequestSpawn(IPlayer &player) override { return true; }
@@ -140,7 +217,7 @@ public:
         L_ = (L_ == nullptr) ? luaL_newstate() : L_;
         if (L_ == nullptr)
         {
-            core_->printLn("Lua state for main script load error!");
+            core_->printLn("OMP LUA: Lua state for main script load error!");
         }
         luaL_openlibs(L_);
 
@@ -152,19 +229,34 @@ public:
             lua_State *SC = luaL_newstate();
             if (SC == nullptr)
             {
-                core_->printLn("Lua state for side script load error!");
+                core_->printLn("OMP LUA: Lua state for side script load error!");
             }
             luaL_openlibs(SC);
 
             if (luaL_dofile(SC, file.c_str()) != LUA_OK)
             {
                 const char *errorMsg = lua_tostring(SC, -1);
-                core_->printLn("%s", errorMsg ? errorMsg : "Unknown Lua error");
+                core_->printLn("%s", errorMsg ? errorMsg : "OMP LUA: Unknown Lua error");
                 lua_pop(SC, 1);
             }
-            // sideScripts_.push_back(SC);
+            LuaStateInfo sclsi;
+            sclsi.L = SC;
+            sclsi.script = file.c_str();
+            sideScripts_.push_back(sclsi);
         }
-
+        if (mainscriptFile_.has_value())
+        {
+            if (luaL_dofile(L_, mainscriptFile_->c_str()) != LUA_OK)
+            {
+                const char *errorMsg = lua_tostring(L_, -1);
+                core_->printLn("%s", errorMsg ? errorMsg : "OMP LUA: Unknown Lua error");
+                lua_pop(L_, 1);
+            }
+        }
+        else
+        {
+            core_->printLn("OMP LUA: mainscript not found!");
+        }
         core_->printLn("OMP LUA loaded.");
     }
 
