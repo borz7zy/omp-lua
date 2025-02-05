@@ -33,6 +33,6 @@ function OnPlayerText(playerid, text)
 end
 
 function OnPlayerCommandText(playerid, cmdtext)
-    printOMP("player", playerid, "sent command:", text)
+    printOMP("player", playerid, "sent command:", cmdtext)
     return false
 end

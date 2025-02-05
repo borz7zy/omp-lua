@@ -307,6 +307,7 @@ public:
                 return static_cast<bool>(intResult);
             }
         }
+        return false;
     }
     bool onPlayerShotMissed(IPlayer &player, const PlayerBulletData &bulletData) override { return true; }
     bool onPlayerShotPlayer(IPlayer &player, IPlayer &target, const PlayerBulletData &bulletData) override { return true; }
