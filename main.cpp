@@ -8,6 +8,7 @@
 #include <typeinfo>
 #ifndef _MSC_VER
 #include <cxxabi.h>
+#include <stdlib.h>
 #endif
 
 extern "C"
@@ -168,29 +169,33 @@ private:
     }
 
 #ifdef _MSC_VER
-    std::string demangleTypeName(const std::string &name)
+    std::string demangleTypeName(const char *name)
     {
-        return name;
+        return std::string(name);
     }
 #else
-    template <typename T>
-    std::string demangleTypeName()
+    std::string demangleTypeName(const char *name)
     {
         int status;
-        char *realname = abi::__cxa_demangle(typeid(T).name(), 0, 0, &status);
-        std::string result(realname ? realname : typeid(T).name());
+        char *realname = abi::__cxa_demangle(name, 0, 0, &status);
+        if (status != 0)
+            return std::string(name);
+
+        std::string ret = realname;
         if (realname)
         {
             std::free(realname);
         }
-        return result;
+        return ret;
     }
 #endif
+
+#define type_name(expr) demangleTypeName(typeid(expr).name())
 
     template <typename T>
     void printArg(const T &arg)
     {
-        std::cout << "  [DEBUG] Type: " << demangleTypeName<T>()
+        std::cout << "  [DEBUG] Type: " << type_name(arg)
                   << ", Value: " << arg << std::endl;
     }
 
