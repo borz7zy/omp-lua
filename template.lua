@@ -56,3 +56,27 @@ end
 function OnPlayerDeath(playerid, killerid, reason)
     printOMP("player", playerid, "killed by:", killerid, ", weapon/reason:", reason)
 end
+
+function OnPlayerTakeDamage(playerid, issuerid, amount, weaponid, bodypart)
+    printOMP("player", playerid, "damaged by", issuerid, "player from", weaponid, "weapon in", bodypart, "bodypart with", amount, "amount")
+end
+
+function OnPlayerGiveDamage(playerid, damagedid, amount, weaponid, bodypart)
+    printOMP("player", playerid, "damage player", damagedid, "from weapon", weaponid, "in bodypart", bodypart, "with", amount, "amount")
+end
+
+function OnPlayerClickMap(playerid, fX, fY, fZ)
+    printOMP("player", playerid, "clicked on map pos:", fX, fY, fZ)
+end
+
+function OnPlayerClickPlayer(playerid, clickedplayerid, source)
+    printOMP("player", playerid, "clicked on", clickedplayerid, "from", source)
+end
+
+function OnClientCheckResponse(playerid, actionid, memaddr, retndata)
+    printOMP(playerid, actionid, memaddr, retndata)
+end
+
+function OnPlayerUpdate(playerid)
+    printOMP("called OnPlayerUpdate for", playerid)
+end

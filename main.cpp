@@ -66,7 +66,7 @@ private:
 
     std::map<int, IPlayer *> playerMap_;
 
-    using LuaValue = std::variant<int, double, std::string, bool>;
+    using LuaValue = std::variant<int, unsigned int, double, std::string, bool>;
 
     void pushLuaValue(lua_State *L, const LuaValue &value)
     {
@@ -156,11 +156,10 @@ private:
         return true;
     }
 
-
     template <typename... Args>
     std::vector<LuaValue> callLua(const std::string &funcName, Args &&...args)
     {
-        std::vector<LuaValue> arguments = {std::forward<Args>(args)...};
+        std::vector<LuaValue> arguments{LuaValue(std::forward<Args>(args))...};
         std::vector<LuaValue> results;
         callLuaFunction(L_, funcName, arguments, results);
         return results;
@@ -316,12 +315,13 @@ public:
         }
         return false;
     }
-    bool onPlayerShotMissed(IPlayer &player, const PlayerBulletData &bulletData) override { 
+    bool onPlayerShotMissed(IPlayer &player, const PlayerBulletData &bulletData) override
+    {
         // public OnPlayerWeaponShot(playerid, WEAPON:weaponid, BULLET_HIT_TYPE:hittype, hitid, Float:fX, Float:fY, Float:fZ)
         auto result = callLua("OnPlayerWeaponShot",
-                player.getID(),
-				bulletData.weapon, int(bulletData.hitType), bulletData.hitID,
-				bulletData.offset.x, bulletData.offset.y, bulletData.offset.z);
+                              player.getID(),
+                              bulletData.weapon, int(bulletData.hitType), bulletData.hitID,
+                              bulletData.offset.x, bulletData.offset.y, bulletData.offset.z);
         if (!result.empty())
         {
             const auto &value = result[0];
@@ -337,12 +337,13 @@ public:
         }
         return true;
     }
-    bool onPlayerShotPlayer(IPlayer &player, IPlayer &target, const PlayerBulletData &bulletData) override { 
+    bool onPlayerShotPlayer(IPlayer &player, IPlayer &target, const PlayerBulletData &bulletData) override
+    {
         // public OnPlayerWeaponShot(playerid, WEAPON:weaponid, BULLET_HIT_TYPE:hittype, hitid, Float:fX, Float:fY, Float:fZ)
         auto result = callLua("OnPlayerWeaponShot",
-                player.getID(),
-				bulletData.weapon, int(bulletData.hitType), bulletData.hitID,
-				bulletData.offset.x, bulletData.offset.y, bulletData.offset.z);
+                              player.getID(),
+                              bulletData.weapon, int(bulletData.hitType), bulletData.hitID,
+                              bulletData.offset.x, bulletData.offset.y, bulletData.offset.z);
         if (!result.empty())
         {
             const auto &value = result[0];
@@ -358,12 +359,13 @@ public:
         }
         return true;
     }
-    bool onPlayerShotVehicle(IPlayer &player, IVehicle &target, const PlayerBulletData &bulletData) override {
+    bool onPlayerShotVehicle(IPlayer &player, IVehicle &target, const PlayerBulletData &bulletData) override
+    {
         // public OnPlayerWeaponShot(playerid, WEAPON:weaponid, BULLET_HIT_TYPE:hittype, hitid, Float:fX, Float:fY, Float:fZ)
         auto result = callLua("OnPlayerWeaponShot",
-                player.getID(),
-				bulletData.weapon, int(bulletData.hitType), bulletData.hitID,
-				bulletData.offset.x, bulletData.offset.y, bulletData.offset.z);
+                              player.getID(),
+                              bulletData.weapon, int(bulletData.hitType), bulletData.hitID,
+                              bulletData.offset.x, bulletData.offset.y, bulletData.offset.z);
         if (!result.empty())
         {
             const auto &value = result[0];
@@ -379,33 +381,13 @@ public:
         }
         return true;
     }
-    bool onPlayerShotObject(IPlayer &player, IObject &target, const PlayerBulletData &bulletData) override {
+    bool onPlayerShotObject(IPlayer &player, IObject &target, const PlayerBulletData &bulletData) override
+    {
         // public OnPlayerWeaponShot(playerid, WEAPON:weaponid, BULLET_HIT_TYPE:hittype, hitid, Float:fX, Float:fY, Float:fZ)
         auto result = callLua("OnPlayerWeaponShot",
-                player.getID(),
-				bulletData.weapon, int(bulletData.hitType), bulletData.hitID,
-				bulletData.offset.x, bulletData.offset.y, bulletData.offset.z);
-        if (!result.empty())
-        {
-            const auto &value = result[0];
-            if (std::holds_alternative<bool>(value))
-            {
-                return std::get<bool>(value);
-            }
-            else if (std::holds_alternative<int>(value))
-            {
-                int intResult = std::get<int>(value);
-                return static_cast<bool>(intResult);
-            }
-        }
-        return true; 
-    }
-    bool onPlayerShotPlayerObject(IPlayer &player, IPlayerObject &target, const PlayerBulletData &bulletData) override {
-        // public OnPlayerWeaponShot(playerid, WEAPON:weaponid, BULLET_HIT_TYPE:hittype, hitid, Float:fX, Float:fY, Float:fZ)
-        auto result = callLua("OnPlayerWeaponShot",
-                player.getID(),
-				bulletData.weapon, int(bulletData.hitType), bulletData.hitID,
-				bulletData.offset.x, bulletData.offset.y, bulletData.offset.z);
+                              player.getID(),
+                              bulletData.weapon, int(bulletData.hitType), bulletData.hitID,
+                              bulletData.offset.x, bulletData.offset.y, bulletData.offset.z);
         if (!result.empty())
         {
             const auto &value = result[0];
@@ -421,45 +403,98 @@ public:
         }
         return true;
     }
-    void onPlayerScoreChange(IPlayer &player, int score) override {
+    bool onPlayerShotPlayerObject(IPlayer &player, IPlayerObject &target, const PlayerBulletData &bulletData) override
+    {
+        // public OnPlayerWeaponShot(playerid, WEAPON:weaponid, BULLET_HIT_TYPE:hittype, hitid, Float:fX, Float:fY, Float:fZ)
+        auto result = callLua("OnPlayerWeaponShot",
+                              player.getID(),
+                              bulletData.weapon, int(bulletData.hitType), bulletData.hitID,
+                              bulletData.offset.x, bulletData.offset.y, bulletData.offset.z);
+        if (!result.empty())
+        {
+            const auto &value = result[0];
+            if (std::holds_alternative<bool>(value))
+            {
+                return std::get<bool>(value);
+            }
+            else if (std::holds_alternative<int>(value))
+            {
+                int intResult = std::get<int>(value);
+                return static_cast<bool>(intResult);
+            }
+        }
+        return true;
+    }
+    void onPlayerScoreChange(IPlayer &player, int score) override
+    {
         // TODO
     }
-    void onPlayerNameChange(IPlayer &player, StringView oldName) override {
+    void onPlayerNameChange(IPlayer &player, StringView oldName) override
+    {
         // TODO
     }
-    void onPlayerInteriorChange(IPlayer &player, unsigned newInterior, unsigned oldInterior) override {
+    void onPlayerInteriorChange(IPlayer &player, unsigned newInterior, unsigned oldInterior) override
+    {
         // public OnPlayerInteriorChange(playerid, newinteriorid, oldinteriorid)
         callLua("OnPlayerInteriorChange", player.getID(), newInterior, oldInterior);
     }
-    void onPlayerStateChange(IPlayer &player, PlayerState newState, PlayerState oldState) override {
+    void onPlayerStateChange(IPlayer &player, PlayerState newState, PlayerState oldState) override
+    {
         // public OnPlayerStateChange(playerid, PLAYER_STATE:newstate, PLAYER_STATE:oldstate)
         callLua("OnPlayerStateChange", player.getID(), int(newState), int(oldState));
     }
-    void onPlayerKeyStateChange(IPlayer &player, uint32_t newKeys, uint32_t oldKeys) override {
+    void onPlayerKeyStateChange(IPlayer &player, uint32_t newKeys, uint32_t oldKeys) override
+    {
         // public OnPlayerKeyStateChange(playerid, KEY:newkeys, KEY:oldkeys)
         callLua("OnPlayerKeyStateChange", player.getID(), newKeys, oldKeys);
     }
-    void onPlayerDeath(IPlayer &player, IPlayer *killer, int reason) override {
+    void onPlayerDeath(IPlayer &player, IPlayer *killer, int reason) override
+    {
         // public OnPlayerDeath(playerid, killerid, WEAPON:reason)
-        callLua("OnPlayerDeath", player.getID(), killer ? killer->getID(): INVALID_PLAYER_ID, reason);
+        callLua("OnPlayerDeath", player.getID(), killer ? killer->getID() : INVALID_PLAYER_ID, reason);
     }
-    void onPlayerTakeDamage(IPlayer &player, IPlayer *from, float amount, unsigned weapon, BodyPart part) override {
+    void onPlayerTakeDamage(IPlayer &player, IPlayer *from, float amount, unsigned weapon, BodyPart part) override
+    {
         // public OnPlayerTakeDamage(playerid, issuerid, Float:amount, WEAPON:weaponid, bodypart)
+        callLua("OnPlayerTakeDamage", player.getID(), from ? from->getID() : INVALID_PLAYER_ID, amount, weapon, int(part));
     }
-    void onPlayerGiveDamage(IPlayer &player, IPlayer &to, float amount, unsigned weapon, BodyPart part) override {
+    void onPlayerGiveDamage(IPlayer &player, IPlayer &to, float amount, unsigned weapon, BodyPart part) override
+    {
         // public OnPlayerGiveDamage(playerid, damagedid, Float:amount, WEAPON:weaponid, bodypart)
+        callLua("OnPlayerGiveDamage", player.getID(), to.getID(), amount, weapon, int(part));
     }
-    void onPlayerClickMap(IPlayer &player, Vector3 pos) override {
+    void onPlayerClickMap(IPlayer &player, Vector3 pos) override
+    {
         // public OnPlayerClickMap(playerid, Float:fX, Float:fY, Float:fZ)
+        callLua("OnPlayerClickMap", player.getID(), pos.x, pos.y, pos.z);
     }
-    void onPlayerClickPlayer(IPlayer &player, IPlayer &clicked, PlayerClickSource source) override {
+    void onPlayerClickPlayer(IPlayer &player, IPlayer &clicked, PlayerClickSource source) override
+    {
         // public OnPlayerClickPlayer(playerid, clickedplayerid, CLICK_SOURCE:source)
+        callLua("OnPlayerClickPlayer", player.getID(), clicked.getID(), int(source));
     }
-    void onClientCheckResponse(IPlayer &player, int actionType, int address, int results) override {
+    void onClientCheckResponse(IPlayer &player, int actionType, int address, int results) override
+    {
         // public OnClientCheckResponse(playerid, actionid, memaddr, retndata)
+        callLua("OnClientCheckResponse", player.getID(), actionType, address, results);
     }
-    bool onPlayerUpdate(IPlayer &player, TimePoint now) override {
+    bool onPlayerUpdate(IPlayer &player, TimePoint now) override
+    {
         // public OnPlayerUpdate(playerid)
+        auto result = callLua("OnPlayerUpdate", player.getID());
+        if (!result.empty())
+        {
+            const auto &value = result[0];
+            if (std::holds_alternative<bool>(value))
+            {
+                return std::get<bool>(value);
+            }
+            else if (std::holds_alternative<int>(value))
+            {
+                int intResult = std::get<int>(value);
+                return static_cast<bool>(intResult);
+            }
+        }
         return true;
     }
 
