@@ -79,4 +79,5 @@ end
 
 function OnPlayerUpdate(playerid)
     printOMP("called OnPlayerUpdate for", playerid)
+    return true
 end
