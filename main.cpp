@@ -187,6 +187,24 @@ private:
     }
 #endif
 
+    template <typename T>
+    void printArg(const T &arg)
+    {
+        std::cout << "  [DEBUG] Type: " << demangleTypeName<T>()
+                  << ", Value: " << arg << std::endl;
+    }
+
+    void printArgs()
+    {
+    }
+
+    template <typename T, typename... Args>
+    void printArgs(const T &first, const Args &...args)
+    {
+        printArg(first);
+        printArgs(args...);
+    }
+
     template <typename... Args>
     std::vector<LuaValue> callLua(const std::string &funcName, Args &&...args)
     {
@@ -195,10 +213,7 @@ private:
         std::cout << "[DEBUG] Calling Lua function: " << funcName << std::endl;
         std::cout << "[DEBUG] Arguments (" << sizeof...(Args) << "):" << std::endl;
 
-        int dummy[] = {0, ((std::cout << "  [DEBUG] Type: " << demangleTypeName<Args>()
-                                      << ", Value: " << std::forward<Args>(args) << std::endl),
-                           0)...};
-        (void)dummy;
+        printArgs(std::forward<Args>(args)...);
 
         std::vector<LuaValue> results;
         callLuaFunction(L_, funcName, arguments, results);
