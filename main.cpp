@@ -192,14 +192,13 @@ private:
     {
         std::vector<LuaValue> arguments{LuaValue(std::forward<Args>(args))...};
 
-#ifdef DEBUG
         std::cout << "[DEBUG] Calling Lua function: " << funcName << std::endl;
         std::cout << "[DEBUG] Arguments (" << sizeof...(Args) << "):" << std::endl;
 
-        ([&]
-         { std::cout << "  [DEBUG] Type: " << demangleTypeName<Args>()
-                     << ", Value: " << args << std::endl; }(), ...);
-#endif
+        int dummy[] = {0, ((std::cout << "  [DEBUG] Type: " << demangleTypeName<Args>()
+                                      << ", Value: " << std::forward<Args>(args) << std::endl),
+                           0)...};
+        (void)dummy;
 
         std::vector<LuaValue> results;
         callLuaFunction(L_, funcName, arguments, results);
