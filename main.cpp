@@ -4,6 +4,7 @@
 #include <optional>
 #include <variant>
 #include <map>
+#include <iostream>
 
 extern "C"
 {
@@ -72,23 +73,23 @@ private:
     {
         std::visit([L](auto &&arg)
                    {
-                   using T = std::decay_t<decltype(arg)>;
-                   if constexpr (std::is_same_v<T, int>)
-                   {
-                       lua_pushinteger(L, arg);
-                   }
-                   else if constexpr (std::is_same_v<T, double>)
-                   {
-                       lua_pushnumber(L, arg);
-                   }
-                   else if constexpr (std::is_same_v<T, std::string>)
-                   {
-                       lua_pushstring(L, arg.c_str());
-                   }
-                   else if constexpr (std::is_same_v<T, bool>)
-                   {
-                       lua_pushboolean(L, arg);
-                   } },
+            using T = std::decay_t<decltype(arg)>;
+            if constexpr (std::is_same_v<T, int>)
+            {
+                lua_pushinteger(L, arg);
+            }
+            else if constexpr (std::is_same_v<T, double>)
+            {
+                lua_pushnumber(L, arg);
+            }
+            else if constexpr (std::is_same_v<T, std::string>)
+            {
+                lua_pushstring(L, arg.c_str());
+            }
+            else if constexpr (std::is_same_v<T, bool>)
+            {
+                lua_pushboolean(L, arg);
+            } },
                    value);
     }
 
@@ -108,11 +109,12 @@ private:
         }
         else if (lua_isboolean(L, index))
         {
-            return lua_toboolean(L, index);
+            return (bool)lua_toboolean(L, index);
         }
         else
         {
-            return nullptr; // Or handle error appropriately
+            std::cerr << "Error: Unexpected Lua type at index " << index << std::endl;
+            throw std::runtime_error("Unexpected Lua type encountered while popping value from Lua stack.");
         }
     }
 
@@ -140,15 +142,20 @@ private:
             {
                 core_->printLn("OMP LUA ERROR: %s", (errorMsg ? errorMsg : "Unknown error"));
             }
+            else
+            {
+                std::cerr << "OMP LUA ERROR: " << (errorMsg ? errorMsg : "Unknown error") << std::endl;
+            }
             lua_pop(L, 1);
             return false;
         }
 
         int numResults = lua_gettop(L);
+        outResults.resize(numResults);
 
-        for (int i = numResults; i > 0; --i)
+        for (int i = 1; i <= numResults; ++i)
         {
-            outResults.push_back(popLuaValue(L, -i));
+            outResults[numResults - i] = popLuaValue(L, i);
         }
 
         lua_settop(L, 0);
@@ -204,8 +211,12 @@ private:
         {
             core_->printLn("OMP LUA: %s", output.c_str());
         }
+        else
+        {
+            std::cerr << "OMP LUA: " << output << std::endl;
+        }
 
-        return 1;
+        return 0;
     }
 
 public:
@@ -215,6 +226,17 @@ public:
     // When this component is destroyed we need to tell any linked components this it is gone.
     ~OmpLua()
     {
+        core_->getPlayers().getPlayerConnectDispatcher().removeEventHandler(this);
+        core_->getPlayers().getPlayerSpawnDispatcher().removeEventHandler(this);
+        core_->getPlayers().getPlayerChangeDispatcher().removeEventHandler(this);
+        core_->getPlayers().getPlayerDamageDispatcher().removeEventHandler(this);
+        core_->getPlayers().getPlayerUpdateDispatcher().removeEventHandler(this);
+        core_->getPlayers().getPlayerStreamDispatcher().removeEventHandler(this);
+        core_->getPlayers().getPlayerTextDispatcher().removeEventHandler(this);
+        core_->getPlayers().getPlayerShotDispatcher().removeEventHandler(this);
+        core_->getPlayers().getPlayerClickDispatcher().removeEventHandler(this);
+        core_->getPlayers().getPlayerCheckDispatcher().removeEventHandler(this);
+
         if (L_ != nullptr)
         {
             lua_close(L_);
@@ -525,7 +547,7 @@ public:
         core_->getPlayers().getPlayerClickDispatcher().addEventHandler(this);
         core_->getPlayers().getPlayerCheckDispatcher().addEventHandler(this);
 
-        L_ = (L_ == nullptr) ? luaL_newstate() : L_;
+        L_ = luaL_newstate();
         if (L_ == nullptr)
         {
             core_->printLn("OMP LUA: Lua state for main script load error!");
@@ -545,8 +567,8 @@ public:
             lua_pushlightuserdata(L_, this);
             lua_pushcclosure(L_, [](lua_State *L) -> int
                              {
-            OmpLua *self = static_cast<OmpLua*>(lua_touserdata(L, lua_upvalueindex(1)));
-            return self->native_printOMP(L); }, 1);
+                OmpLua *self = static_cast<OmpLua*>(lua_touserdata(L, lua_upvalueindex(1)));
+                return self->native_printOMP(L); }, 1);
             lua_setglobal(L_, "printOMP");
         }
         else
