@@ -168,6 +168,7 @@ private:
         return true;
     }
 
+#ifdef DEBUG
 #ifdef _MSC_VER
     std::string demangleTypeName(const char *name)
     {
@@ -191,6 +192,7 @@ private:
 #endif
 
 #define type_name(expr) demangleTypeName(typeid(expr).name())
+#endif
 
     template <typename T>
     void printArg(const T &arg)
@@ -215,11 +217,12 @@ private:
     {
         std::vector<LuaValue> arguments{LuaValue(std::forward<Args>(args))...};
 
+#ifdef DEBUG
         std::cout << "[DEBUG] Calling Lua function: " << funcName << std::endl;
         std::cout << "[DEBUG] Arguments (" << sizeof...(Args) << "):" << std::endl;
 
         printArgs(std::forward<Args>(args)...);
-
+#endif
         std::vector<LuaValue> results;
         callLuaFunction(L_, funcName, arguments, results);
         return results;
