@@ -468,7 +468,7 @@ public:
     void onPlayerKeyStateChange(IPlayer &player, uint32_t newKeys, uint32_t oldKeys) override
     {
         // public OnPlayerKeyStateChange(playerid, KEY:newkeys, KEY:oldkeys)
-        callLua("OnPlayerKeyStateChange", player.getID(), newKeys, oldKeys);
+        callLua("OnPlayerKeyStateChange", player.getID(), int(newKeys), int(oldKeys));
     }
     void onPlayerDeath(IPlayer &player, IPlayer *killer, int reason) override
     {
