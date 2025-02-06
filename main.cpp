@@ -6,7 +6,9 @@
 #include <map>
 #include <iostream>
 #include <typeinfo>
+#ifndef _MSC_VER
 #include <cxxabi.h>
+#endif
 
 extern "C"
 {
@@ -165,6 +167,12 @@ private:
         return true;
     }
 
+#ifdef _MSC_VER
+    std::string demangleTypeName(const std::string &name)
+    {
+        return name;
+    }
+#else
     template <typename T>
     std::string demangleTypeName()
     {
@@ -177,6 +185,7 @@ private:
         }
         return result;
     }
+#endif
 
     template <typename... Args>
     std::vector<LuaValue> callLua(const std::string &funcName, Args &&...args)
