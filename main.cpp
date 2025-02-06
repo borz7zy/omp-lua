@@ -5,6 +5,8 @@
 #include <variant>
 #include <map>
 #include <iostream>
+#include <typeinfo>
+#include <cxxabi.h>
 
 extern "C"
 {
@@ -163,10 +165,33 @@ private:
         return true;
     }
 
+    template <typename T>
+    std::string demangleTypeName()
+    {
+        int status;
+        char *realname = abi::__cxa_demangle(typeid(T).name(), 0, 0, &status);
+        std::string result(realname ? realname : typeid(T).name());
+        if (realname)
+        {
+            std::free(realname);
+        }
+        return result;
+    }
+
     template <typename... Args>
     std::vector<LuaValue> callLua(const std::string &funcName, Args &&...args)
     {
         std::vector<LuaValue> arguments{LuaValue(std::forward<Args>(args))...};
+
+#ifdef DEBUG
+        std::cout << "[DEBUG] Calling Lua function: " << funcName << std::endl;
+        std::cout << "[DEBUG] Arguments (" << sizeof...(Args) << "):" << std::endl;
+
+        ([&]
+         { std::cout << "  [DEBUG] Type: " << demangleTypeName<Args>()
+                     << ", Value: " << args << std::endl; }(), ...);
+#endif
+
         std::vector<LuaValue> results;
         callLuaFunction(L_, funcName, arguments, results);
         return results;
