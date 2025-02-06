@@ -248,7 +248,7 @@ public:
     {
         playerMap_[player.getID()] = &player;
         // public OnIncomingConnection(playerid, ip_address[], port)
-        callLua("OnIncomingConnection", player.getID(), ipAddress.data(), port);
+        callLua("OnIncomingConnection", player.getID(), ipAddress.data(), int(port));
     }
     void onPlayerConnect(IPlayer &player) override
     {
@@ -292,12 +292,12 @@ public:
     void onPlayerStreamIn(IPlayer &player, IPlayer &forPlayer) override
     {
         // public OnPlayerStreamIn(playerid, forplayerid)
-        callLua("OnPlayerStreamIn", player.getID());
+        callLua("OnPlayerStreamIn", player.getID(), forPlayer.getID());
     }
     void onPlayerStreamOut(IPlayer &player, IPlayer &forPlayer) override
     {
         // public OnPlayerStreamOut(playerid, forplayerid)
-        callLua("OnPlayerStreamOut", player.getID());
+        callLua("OnPlayerStreamOut", player.getID(), forPlayer.getID());
     }
     bool onPlayerText(IPlayer &player, StringView message) override
     {
@@ -342,7 +342,7 @@ public:
         // public OnPlayerWeaponShot(playerid, WEAPON:weaponid, BULLET_HIT_TYPE:hittype, hitid, Float:fX, Float:fY, Float:fZ)
         auto result = callLua("OnPlayerWeaponShot",
                               player.getID(),
-                              bulletData.weapon, int(bulletData.hitType), bulletData.hitID,
+                              int(bulletData.weapon), int(bulletData.hitType), int(bulletData.hitID),
                               bulletData.offset.x, bulletData.offset.y, bulletData.offset.z);
         if (!result.empty())
         {
@@ -364,7 +364,7 @@ public:
         // public OnPlayerWeaponShot(playerid, WEAPON:weaponid, BULLET_HIT_TYPE:hittype, hitid, Float:fX, Float:fY, Float:fZ)
         auto result = callLua("OnPlayerWeaponShot",
                               player.getID(),
-                              bulletData.weapon, int(bulletData.hitType), bulletData.hitID,
+                              int(bulletData.weapon), int(bulletData.hitType), int(bulletData.hitID),
                               bulletData.offset.x, bulletData.offset.y, bulletData.offset.z);
         if (!result.empty())
         {
@@ -386,7 +386,7 @@ public:
         // public OnPlayerWeaponShot(playerid, WEAPON:weaponid, BULLET_HIT_TYPE:hittype, hitid, Float:fX, Float:fY, Float:fZ)
         auto result = callLua("OnPlayerWeaponShot",
                               player.getID(),
-                              bulletData.weapon, int(bulletData.hitType), bulletData.hitID,
+                              int(bulletData.weapon), int(bulletData.hitType), int(bulletData.hitID),
                               bulletData.offset.x, bulletData.offset.y, bulletData.offset.z);
         if (!result.empty())
         {
@@ -408,7 +408,7 @@ public:
         // public OnPlayerWeaponShot(playerid, WEAPON:weaponid, BULLET_HIT_TYPE:hittype, hitid, Float:fX, Float:fY, Float:fZ)
         auto result = callLua("OnPlayerWeaponShot",
                               player.getID(),
-                              bulletData.weapon, int(bulletData.hitType), bulletData.hitID,
+                              int(bulletData.weapon), int(bulletData.hitType), int(bulletData.hitID),
                               bulletData.offset.x, bulletData.offset.y, bulletData.offset.z);
         if (!result.empty())
         {
@@ -430,7 +430,7 @@ public:
         // public OnPlayerWeaponShot(playerid, WEAPON:weaponid, BULLET_HIT_TYPE:hittype, hitid, Float:fX, Float:fY, Float:fZ)
         auto result = callLua("OnPlayerWeaponShot",
                               player.getID(),
-                              bulletData.weapon, int(bulletData.hitType), bulletData.hitID,
+                              int(bulletData.weapon), int(bulletData.hitType), int(bulletData.hitID),
                               bulletData.offset.x, bulletData.offset.y, bulletData.offset.z);
         if (!result.empty())
         {
@@ -458,7 +458,7 @@ public:
     void onPlayerInteriorChange(IPlayer &player, unsigned newInterior, unsigned oldInterior) override
     {
         // public OnPlayerInteriorChange(playerid, newinteriorid, oldinteriorid)
-        callLua("OnPlayerInteriorChange", player.getID(), newInterior, oldInterior);
+        callLua("OnPlayerInteriorChange", player.getID(), int(newInterior), int(oldInterior));
     }
     void onPlayerStateChange(IPlayer &player, PlayerState newState, PlayerState oldState) override
     {
@@ -473,17 +473,17 @@ public:
     void onPlayerDeath(IPlayer &player, IPlayer *killer, int reason) override
     {
         // public OnPlayerDeath(playerid, killerid, WEAPON:reason)
-        callLua("OnPlayerDeath", player.getID(), killer ? killer->getID() : INVALID_PLAYER_ID, reason);
+        callLua("OnPlayerDeath", player.getID(), killer ? killer->getID() : int(INVALID_PLAYER_ID), reason);
     }
     void onPlayerTakeDamage(IPlayer &player, IPlayer *from, float amount, unsigned weapon, BodyPart part) override
     {
         // public OnPlayerTakeDamage(playerid, issuerid, Float:amount, WEAPON:weaponid, bodypart)
-        callLua("OnPlayerTakeDamage", player.getID(), from ? from->getID() : INVALID_PLAYER_ID, amount, weapon, int(part));
+        callLua("OnPlayerTakeDamage", player.getID(), from ? from->getID() : int(INVALID_PLAYER_ID), amount, int(weapon), int(part));
     }
     void onPlayerGiveDamage(IPlayer &player, IPlayer &to, float amount, unsigned weapon, BodyPart part) override
     {
         // public OnPlayerGiveDamage(playerid, damagedid, Float:amount, WEAPON:weaponid, bodypart)
-        callLua("OnPlayerGiveDamage", player.getID(), to.getID(), amount, weapon, int(part));
+        callLua("OnPlayerGiveDamage", player.getID(), to.getID(), amount, int(weapon), int(part));
     }
     void onPlayerClickMap(IPlayer &player, Vector3 pos) override
     {
