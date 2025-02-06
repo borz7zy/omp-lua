@@ -68,7 +68,7 @@ private:
 
     using LuaValue = std::variant<int, unsigned int, double, std::string, bool>;
 
-    void pushLuaValue(lua_State *L, const LuaValue &value)
+    void pushLuaValue(lua_State *&L, const LuaValue &value)
     {
         std::visit([L](auto &&arg)
                    {
@@ -92,7 +92,7 @@ private:
                    value);
     }
 
-    LuaValue popLuaValue(lua_State *L, int index)
+    LuaValue popLuaValue(lua_State *&L, int index)
     {
         if (lua_isinteger(L, index))
         {
@@ -116,7 +116,7 @@ private:
         }
     }
 
-    bool callLuaFunction(lua_State *L, const std::string &funcName, const std::vector<LuaValue> &args, std::vector<LuaValue> &outResults)
+    bool callLuaFunction(lua_State *&L, const std::string &funcName, const std::vector<LuaValue> &args, std::vector<LuaValue> &outResults)
     {
         if (!L)
             return false;
